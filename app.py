@@ -1,20 +1,21 @@
 import os
 from trading_ig import IGService
-from trading_ig.config import config
+from trading_ig_config import config
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 import numpy as np
 
-load_dotenv()
+# load_dotenv()
 
 # Set up authentication
-config.username = os.getenv('IG_TRADING_USERNAME')
-config.password = os.getenv('IG_TRADING_PASSWORD')
-config.api_key = os.getenv('IG_TRADING_API_KEY')
-config.acc_type = 'demo'  # or 'live' for live trading
+# config.username = os.getenv('IG_TRADING_USERNAME')
+# config.password = os.getenv('IG_TRADING_PASSWORD')
+# config.api_key = os.getenv('IG_TRADING_API_KEY')
+# config.acc_type = 'demo'  # or 'live' for live trading
 
 # Initialize IG service
 ig_service = IGService(config.username, config.password, config.api_key, config.acc_type)
+# print("Login Successful")
 ig_service.create_session()
 
 class TradingBot:
