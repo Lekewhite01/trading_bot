@@ -14,14 +14,17 @@ import numpy as np
 # config.acc_type = 'demo'  # or 'live' for live trading
 
 # Initialize IG service
-ig_service = IGService(config.username, config.password, config.api_key, config.acc_type)
-# print("Login Successful")
-ig_service.create_session()
+try:
+    ig_service = IGService(config.username, config.password, config.api_key, config.acc_type)
+    ig_service.create_session()
+    print("Login Successful")
+except Exception as e:
+    print(e)
 
 class TradingBot:
     def __init__(self, symbol='CS.D.EURUSD.MINI.IP'):
         self.symbol = symbol
-        self.account_info = ig_service.switch_account(config.acc_type)
+        self.account_info = ig_service.switch_account(config.acc_type, False)
         self.equity = self.account_info['availableToDeal']
         self.risk_limit = 0.05 * self.equity  # Risk not more than 5% of equity
 
