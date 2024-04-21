@@ -26,98 +26,116 @@ except Exception as e:
 
 account = ig_service.account()
 
-print(account)
+# print(account)
 # ig.getAvailable()
 class TradingBot:
-    def __init__(self, symbol='CS.D.EURUSD.MINI.IP'):
+    def __init__(self, symbol='IX.D.FTSE.IFM.IP'):
         self.symbol = symbol
         # self.account_info = ig_service.switch_account(config.acc_type, config.acc_id)
         # self.equity = self.account_info['availableToDeal']
         self.equity = account.loc['XQWAV', 'balance']['balance']
         self.risk_limit = 0.05 * self.equity  # Risk not more than 5% of equity
 
-    # def initialize_account_info(self, default_account):
-    #     try:
-    #         return ig_service.switch_account(default_account)
-    #     except Exception as e:
-    #         print("Error initializing account info:", e)
-    #         return None
-
-    def fetch_historical_prices(self, interval='MINUTE', num_points=100):
+    def fetch_historical_prices(self, interval='DAY'):
         try:
-            end_date = datetime.utcnow()
-            start_date = end_date - timedelta(minutes=num_points)
+            end_date = datetime.now()
+            start_date = end_date - timedelta(weeks=4)
             prices = ig_service.getPrices(
                 epic=self.symbol,
                 resolution=interval,
-                from_date=start_date.strftime('%Y-%m-%dT%H:%M:%S'),
-                to_date=end_date.strftime('%Y-%m-%dT%H:%M:%S')
+                start=str(start_date),
+                end=str(end_date)
             )
-            return prices['prices']
+            return prices
         except Exception as e:
             print("Error fetching historical prices:", e)
             return []
 
     def calculate_support_resistance(self, prices):
         try:
-            high_prices = np.array([price['highPrice'] for price in prices])
-            low_prices = np.array([price['lowPrice'] for price in prices])
-            close_prices = np.array([price['closePrice'] for price in prices])
+            bid_prices = [entry['bid'] for entry in prices['closePrice'].tolist()]
+            ask_prices = [entry['ask'] for entry in prices['closePrice'].tolist()]
+            high = max(max(bid_prices), max(ask_prices))
+            low = min(min(bid_prices), min(ask_prices))
 
-            support_level = np.min(low_prices)
-            resistance_level = np.max(high_prices)
+            # Support level is the lowest closing price
+            support = low
 
-            return support_level, resistance_level
+            # Resistance level is the highest closing price
+            resistance = high
+
+            return support, resistance
         except Exception as e:
             print("Error calculating support and resistance levels:", e)
             return None, None
 
-    def calculate_moving_average(self, prices, window=50):
+    def calculate_moving_average(self, prices, window=4):
         try:
-            close_prices = np.array([price['closePrice'] for price in prices])
+            bid_prices = [entry['bid'] for entry in prices['closePrice'].tolist()]
+            ask_prices = [entry['ask'] for entry in prices['closePrice'].tolist()]
+            
+            close_prices = np.array([(bid + ask) / 2 for bid, ask in zip(bid_prices, ask_prices)])
+            # Calculate the simple moving average (SMA) using Ta-Lib
             moving_average = talib.SMA(close_prices, timeperiod=window)[-1]
             return moving_average
         except Exception as e:
             print("Error calculating moving average:", e)
             return None
 
-    def calculate_pivot_point(self, prices):
-        try:
-            high_prices = np.array([price['highPrice'] for price in prices])
-            low_prices = np.array([price['lowPrice'] for price in prices])
-            close_prices = np.array([price['closePrice'] for price in prices])
+    def calculate_pivot_point(self,prices):
+        """
+        Calculate the pivot point.
 
-            pivot_point = talib.PIVOT(close_prices, high_prices, low_prices, close_prices)[-1]
-            return pivot_point
-        except Exception as e:
-            print("Error calculating pivot point:", e)
-            return None
+        Args:
+        data (dict): Dictionary containing bid, ask, and last traded prices.
+
+        Returns:
+        float: The pivot point.
+        """
+        high = max([entry['ask'] for entry in prices['closePrice'].tolist()])
+        low =  min([entry['bid'] for entry in prices['closePrice'].tolist()])
+        close = max([entry['lastTraded'] if entry['lastTraded'] is not None else (entry['bid'] + entry['ask']) / 2 for entry in prices['closePrice'].tolist()])
+        pivot_point = (high + low + close) / 3
+        return pivot_point
 
     def generate_signal(self):
         try:
             prices = self.fetch_historical_prices()
-            if not prices:
+            if prices is None or prices.empty:
+                print("hold")
                 return 'hold'
+            # else:
+            #     return prices
 
-            current_price = prices[-1]['closePrice']
+            current_price = prices.iloc[-1]['closePrice']['bid']
             support_level, resistance_level = self.calculate_support_resistance(prices)
             moving_average = self.calculate_moving_average(prices)
             pivot_point = self.calculate_pivot_point(prices)
-            if moving_average is None or pivot_point is None:
-                return 'hold'
 
+            if moving_average is None or pivot_point is None:
+                print("hold")
+                return 'hold'
+            # else:
+                # return moving_average, pivot_point
+            # return current_price, moving_average, support_level, resistance_level, pivot_point
+            # Generating the signal based on conditions
             if current_price > moving_average and current_price > resistance_level and current_price > pivot_point:
+                print("buy")
                 return 'buy'
             elif current_price < moving_average and current_price < support_level and current_price < pivot_point:
+                print("sell")
                 return 'sell'
             else:
+                print("hold")
                 return 'hold'
         except Exception as e:
             print("Error generating signal:", e)
-            return 'hold'
+        #     return 'hold'
 
-    def execute_trade(self, side, size=1):
+
+    def execute_trade(self, size=1):
         try:
+            side = 'buy'
             if side == 'buy':
                 ig_service.createPosition(
                     currency = 'GBP',
@@ -129,8 +147,9 @@ class TradingBot:
                     forceOpen=True,
                     limitDistance=None,
                     stopDistance=None,
-                    guaranteed_stop=False
+                    guaranteedStop=False
                 )
+                print(f"Buy trade executed for {size} units of {self.symbol}")
                 return f"Buy trade executed for {size} units of {self.symbol}"
             elif side == 'sell':
                 ig_service.createPosition(
@@ -143,15 +162,26 @@ class TradingBot:
                     forceOpen=True,
                     limitDistance=None,
                     stopDistance=None,
-                    guaranteed_stop=False
+                    guaranteedStop=False
                 )
+                print(f"Sell trade executed for {size} units of {self.symbol}")
                 return f"Sell trade executed for {size} units of {self.symbol}"
             else:
-                return "No trade executed."
+                print("No trade executed.")
+                return("No trade executed.")
         except Exception as e:
             print("Error executing trade:", e)
             return "Error executing trade"
 
-if __name__ == "__main__":
+def main():
     trading_bot = TradingBot()
+    prices = trading_bot.fetch_historical_prices()
+    # trading_bot.calculate_support_resistance(prices)
+    # trading_bot.calculate_moving_average(prices)
+    # trading_bot.calculate_pivot_point(prices)
+    # trading_bot.generate_signal()
+    trading_bot.execute_trade()
+
+if __name__ == "__main__":
+    main()
     # You can call methods of trading_bot here as needed.
