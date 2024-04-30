@@ -31,8 +31,6 @@ account = ig_service.account()
 class TradingBot:
     def __init__(self, symbol='IX.D.FTSE.IFM.IP'):
         self.symbol = symbol
-        # self.account_info = ig_service.switch_account(config.acc_type, config.acc_id)
-        # self.equity = self.account_info['availableToDeal']
         self.equity = account.loc['XQWAV', 'balance']['balance']
         self.risk_limit = 0.05 * self.equity  # Risk not more than 5% of equity
 
@@ -119,6 +117,7 @@ class TradingBot:
                 # return moving_average, pivot_point
             # return current_price, moving_average, support_level, resistance_level, pivot_point
             # Generating the signal based on conditions
+
             if current_price > moving_average and current_price > resistance_level and current_price > pivot_point:
                 print("buy")
                 return 'buy'
@@ -133,9 +132,9 @@ class TradingBot:
         #     return 'hold'
 
 
-    def execute_trade(self, size=1):
+    def execute_trade(self, side='buy', size=1):
         try:
-            side = 'buy'
+            # side = 'buy'
             if side == 'buy':
                 ig_service.createPosition(
                     currency = 'GBP',
@@ -145,8 +144,8 @@ class TradingBot:
                     expiry='-',
                     size=size,
                     forceOpen=True,
-                    limitDistance=None,
-                    stopDistance=None,
+                    limitDistance=50,
+                    stopDistance=50,
                     guaranteedStop=False
                 )
                 print(f"Buy trade executed for {size} units of {self.symbol}")
@@ -159,9 +158,9 @@ class TradingBot:
                     orderType='MARKET',
                     expiry='-',
                     size=size,
-                    forceOpen=True,
-                    limitDistance=None,
-                    stopDistance=None,
+                    forceOpen=False,
+                    limitDistance=50,
+                    stopDistance=50,
                     guaranteedStop=False
                 )
                 print(f"Sell trade executed for {size} units of {self.symbol}")
