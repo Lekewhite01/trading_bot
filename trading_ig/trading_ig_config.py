@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 class config(object):
     username = os.getenv("IG_USERNAME")
     password = os.getenv("IG_PASSWORD")
