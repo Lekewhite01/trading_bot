@@ -141,7 +141,7 @@ with col4:
 with col1:
     runtime = st.select_slider(
     "Select trading strategy runtime",
-    options=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
+    options=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"])
     session.runtime = runtime
     
 with col2: 
