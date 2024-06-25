@@ -26,3 +26,6 @@ tomli
 trading-ig==0.0.15
 typing-extensions
 urllib3
+ig-trading-api
+TA-Lib
+pycrypto
